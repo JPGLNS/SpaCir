@@ -1,3 +1,0 @@
-figure,sample_id,panels,mutation_groups,notes
-FigureS11,Tonsil2,S11A,"High_Mutation;Low_Mutation;No_Mutation;Other cell types","Cell-type dotplot of SHM-associated genes across all inferred cell types."
-FigureS12,LN2,S12A-S12L,"Low_Mutation;High_Mutation","LN2 supplementary panels reuse the Figure5 helper functions with LN2 inputs."

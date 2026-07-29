@@ -1,5 +1,0 @@
-sample_id,object_name,display_sample,seurat_rds,cell2location_metadata,igh_vdj_csv,trb_vdj_csv,region_column,spot_column
-LN1,LN_1,LN1,data/processed/figure2/LN1_seurat.rds,data/processed/figure2/LN1_cell2location_metadata.csv,data/processed/figure2/LN1_IGH_vdj.csv,data/processed/figure2/LN1_TRB_vdj.csv,NewClusters,spatial_barcode_ori
-LN2,LN_2,LN2,data/processed/figure2/LN2_seurat.rds,data/processed/figure2/LN2_cell2location_metadata.csv,data/processed/figure2/LN2_IGH_vdj.csv,data/processed/figure2/LN2_TRB_vdj.csv,NewClusters,spatial_barcode_ori
-Tonsil1,Tonsil_1,Tonsil1,data/processed/figure2/Tonsil1_seurat.rds,data/processed/figure2/Tonsil1_cell2location_metadata.csv,data/processed/figure2/Tonsil1_IGH_vdj.csv,data/processed/figure2/Tonsil1_TRB_vdj.csv,NewClusters,spatial_barcode_ori
-Tonsil2,Tonsil_2,Tonsil2,data/processed/figure2/Tonsil2_seurat.rds,data/processed/figure2/Tonsil2_cell2location_metadata.csv,data/processed/figure2/Tonsil2_IGH_vdj.csv,data/processed/figure2/Tonsil2_TRB_vdj.csv,NewClusters,spatial_barcode_ori

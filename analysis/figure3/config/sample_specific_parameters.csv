@@ -1,4 +1,0 @@
-sample_id,figure_panels,primary_region_column,monocle_neighbor_graph,monocle_q_value_cutoff,gene_module_resolution,pseudotime_color_by,clonefamily_count_shown,notes
-Tonsil2,"Figure3A-R; FigureS5","NewClusters","principal_graph",0.05,0.007,"Follicular_DZ;Inter_LZ_DZ;Follicular_LZ",131,"Main Figure 3 pseudotime and IGH clonefamily analysis."
-LN2,"FigureS6","NewClusters","principal_graph",0.05,0.007,"sample-specific GC and inter-follicular regions",203,"Supplementary LN2 clonefamily and TRB pathology analysis."
-Tonsil1,"FigureS7","NewClusters","principal_graph",0.05,0.007,"sample-specific follicular and inter-follicular regions",15,"Supplementary Tonsil1 clonefamily and TRB pathology analysis."

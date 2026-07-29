@@ -1,4 +1,0 @@
-sample_id,figure_panels,object_key,sctransform_assay,pca_dims,neighbor_dims,cluster_resolution,cluster_algorithm,umap_dims,region_label_column,cell2location_n_cells_per_location,cell2location_detection_alpha,cell2location_max_epochs,notes
-Tonsil2,"Figure2A-M; FigureS2","Tonsil_2_test_ori","Spatial","1:30","1:30",1.1,4,"1:30","NewClusters",30,20,30000,"Main Figure 2 region annotation and cell2location mapping parameters."
-LN2,"FigureS3","LN_2_test_ori","Spatial","1:30","1:30",0.7,4,"1:30","NewClusters",30,20,30000,"Supplementary LN2 region annotation parameters."
-Tonsil1,"FigureS4","Tonsil_1_test_ori","Spatial","1:30","1:30",0.5,4,"1:30","NewClusters",30,20,30000,"Supplementary Tonsil1 region annotation parameters."

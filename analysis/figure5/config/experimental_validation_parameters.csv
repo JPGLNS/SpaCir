@@ -1,4 +1,0 @@
-panel,input_table,grouping,measurement,notes
-Figure5J,none,workflow_step,schematic,"Schematic generated from hard-coded public workflow step labels."
-Figure5K,data/validation/shm_frequency_kd_control.csv,target_gene_and_condition,SHM_frequency,"Expected columns: target_gene, condition, replicate, shm_frequency."
-Figure5L_N,data/validation/rt_qpcr_kd_control.csv,target_gene_condition_and_assay_gene,relative_expression,"Expected columns: target_gene, assay_gene, condition, replicate, relative_expression."

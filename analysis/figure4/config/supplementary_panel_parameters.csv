@@ -1,4 +1,0 @@
-figure,sample_id,panels,gc_parts,notes
-FigureS8,Tonsil2,S8A-S8E,"GC1;GC2;GC3;GC4;GC5;GC6;GC7;GC8;GC9;GC10;GC11;GC12","Uses Figure 4 helper functions for GC-part composition, maturity scores, WGCNA modules, and hub-gene GO enrichment."
-FigureS9,LN2,S9A-S9T,"GC1;GC2;GC3;GC4;GC5;GC6;GC7;GC8;GC9;GC10;GC11;GC12;GC13","Uses normalized diversity metrics and significance-marked trend plots."
-FigureS10,Tonsil1,S10A-S10O,"GC1;GC2;GC3;GC4;GC5;GC6;GC7;GC8","Uses normalized diversity metrics and significance-marked trend plots."

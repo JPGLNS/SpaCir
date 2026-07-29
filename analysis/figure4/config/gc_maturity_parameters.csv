@@ -1,8 +1,0 @@
-parameter,value,used_for
-gc_column,"GC_part","GC-part grouping for Figure4A/D and all EarlyGC/LateGC comparisons"
-assay,"SCT","Module-score assay"
-early_gc_markers,"CD83;CD86;CXCR5;GPR183;SLAMF1;BCL6","EarlyGC AddModuleScore feature set"
-late_gc_markers,"IRF4;PRDM1;XBP1;ZBTB20;FOXP3;DUSP2;IRF8;GADD45B;JCHAIN;TOX2;SDC1","LateGC AddModuleScore feature set"
-module_score_nbin,10,"Seurat::AddModuleScore nbin"
-assignment_rule,"EarlyGC if mean EarlyGC module score in the GC part is greater than or equal to mean LateGC module score; otherwise LateGC","GC maturity label assignment"
-retained_states,"EarlyGC;LateGC","Final figure states"

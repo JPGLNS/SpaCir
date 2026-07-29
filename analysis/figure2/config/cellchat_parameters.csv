@@ -1,5 +1,0 @@
-analysis_scope,group_by,assay_or_object,pathways_or_modules,statistical_setting,used_for
-region_interaction_strength,"NewClusters","CellChat object","All inferred pathways","netAnalysis_computeCentrality after computeCommunProbPathway","Figure2L;FigureS2C;FigureS2D"
-pathway_networks,"NewClusters","CellChat object","BAFF;MHC-II;CXCL;ICOS","Pathway-specific netVisual and ligand-receptor contribution plots","Figure2M;FigureS2E;FigureS2F"
-cellchat_pathway_list,"NewClusters","CellChat object","MIF;COLLAGEN;MHC-II;COMPLEMENT;MHC-I;CypA;CD45;GALECTIN;CD99;LAMININ;ICAM;CD23;CXCL;CCL;APP;SEMA4;DESMOSOME;MK;THY1;ANGPTL;LT;HSPG;CysLTs;BAFF;SELPLG;TGFb;BTLA;NECTIN;BAG;ICOS;CD6","Final retained pathway list before panel-specific plotting","Figure2L;Figure2M;FigureS2"
-clonefamily_cellchat,"Clonefamily-assigned region labels","CellChat object with clonefamily columns","Clonefamily1-Clonefamily28","Same CellChat workflow applied after adding clonefamily region labels","Supplementary clonefamily communication analyses"
