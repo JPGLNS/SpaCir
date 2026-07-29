@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Low-memory rewrite of the original IGH/TRB pipeline.
+# Single-thread indexed rewrite of the low-memory IGH/TRB pipeline.
 # Calculation rules, thresholds, and output names are kept aligned with the
-# original script; the main change is that the huge alignment TSV is processed
-# in chunks instead of being loaded and queued in memory all at once.
+# quality-fixed script. Spatial barcode substitutions are resolved through a
+# precomputed lookup index instead of scanning the full whitelist for each
+# candidate window.
 
 BASE_DIR="${BASE_DIR:-results}"
 SAMPLE_GLOB="${SAMPLE_GLOB:-*-TRB}"
@@ -14,8 +15,8 @@ CHUNKSIZE="${CHUNKSIZE:-50000}"
 MAX_WORKERS="${MAX_WORKERS:-1}"
 
 # Process filtered MiXCR alignments sample by sample. CHUNKSIZE controls how
-# many alignment rows are held in memory at once; MAX_WORKERS can be increased
-# cautiously for faster barcode matching on larger machines.
+# many alignment rows are held in memory at once. This indexed implementation
+# intentionally runs with one worker to preserve deterministic output order.
 find "$BASE_DIR" -maxdepth 1 -type d -name "$SAMPLE_GLOB" | sort | while read -r sample_dir; do
     sample_name=$(basename "$sample_dir")
     mixcr_dir="${sample_dir}/${PREPROCESS_DIR}/${MIXCR_OUTDIR}"
@@ -68,22 +69,25 @@ import math
 import os
 import re
 from collections import Counter, defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
-from rapidfuzz.distance import Levenshtein
 
 
 sample_name = os.environ["SAMPLE_NAME"]
 base_path = os.environ["MIXCR_DIR"]
 chunksize = int(os.environ.get("CHUNKSIZE", "50000"))
 max_workers = max(1, int(os.environ.get("MAX_WORKERS", "1")))
+if max_workers != 1:
+    raise ValueError(
+        "06_spatial_barcode_umi_pipeline_indexed.sh requires MAX_WORKERS=1"
+    )
 
 meta_data_files = {
     f"{sample_name}_meta_data_with_mixcr.csv": [sample_name],
 }
 max_levenshtein_distances = [1]
 umi_thresholds = [3]
+DNA_BASES = "ACGT"
 
 
 # Curly-brace strings store all read-level values belonging to one spatial
@@ -121,7 +125,61 @@ def extract_umi(target_sequence_part, original_sequence):
     return umi.rjust(12, "A")
 
 
-def process_sequence(row, whitelist):
+def build_substitution_index(whitelist_values):
+    """Validate 16 bp whitelist barcodes and index every unique substitution."""
+    values = list(whitelist_values)
+    if not values:
+        raise ValueError("spatial barcode whitelist is empty")
+    if len(values) != len(set(values)):
+        raise ValueError("spatial barcode whitelist contains duplicate values")
+
+    whitelist = set(values)
+    for barcode in whitelist:
+        if not isinstance(barcode, str) or len(barcode) != 16:
+            raise ValueError(f"invalid spatial barcode length: {barcode!r}")
+        invalid_bases = set(barcode) - set(DNA_BASES)
+        if invalid_bases:
+            raise ValueError(
+                f"invalid spatial barcode bases in {barcode!r}: "
+                f"{''.join(sorted(invalid_bases))}"
+            )
+
+    substitution_index = {}
+    conflicts = {}
+    for barcode in sorted(whitelist):
+        for position, original_base in enumerate(barcode):
+            for replacement in DNA_BASES:
+                if replacement == original_base:
+                    continue
+                neighbor = (
+                    barcode[:position]
+                    + replacement
+                    + barcode[position + 1:]
+                )
+                # Exact whitelist matches are handled before substitutions.
+                if neighbor in whitelist:
+                    continue
+                candidate = (barcode, position)
+                existing = substitution_index.get(neighbor)
+                if existing is None:
+                    substitution_index[neighbor] = candidate
+                elif existing != candidate:
+                    conflicts.setdefault(neighbor, {existing}).add(candidate)
+
+    if conflicts:
+        examples = []
+        for neighbor in sorted(conflicts)[:3]:
+            candidates = sorted(barcode for barcode, _ in conflicts[neighbor])
+            examples.append(f"{neighbor}=>{','.join(candidates)}")
+        raise ValueError(
+            "ambiguous single-substitution barcode neighbors detected: "
+            f"count={len(conflicts)}; examples={'; '.join(examples)}"
+        )
+
+    return whitelist, substitution_index
+
+
+def process_sequence(row, whitelist, substitution_index):
     """Match one MiXCR alignment row to a spatial barcode and extract UMI."""
     try:
         target_sequence = row["targetSequences"].split(",")[0]
@@ -131,7 +189,10 @@ def process_sequence(row, whitelist):
         if not windows:
             return None
 
-        quality_windows = [target_qualities[i:i + 16] for i in range(len(target_sequence) - 15)]
+        quality_windows = [
+            target_qualities[6 + i:6 + i + 16]
+            for i in range(len(windows))
+        ]
 
         matched_qualities = []
         operation_types = []
@@ -154,57 +215,28 @@ def process_sequence(row, whitelist):
                 updated_row["UMI"] = umi
                 return updated_row
 
-        best_match = None
-        # Second pass: allow edit distance 1. Mismatch corrections are accepted
-        # only when the differing base quality is below Q30.
-        for lev_dist in range(1, 2):
-            for i, window in enumerate(windows):
-                for whitelist_seq in whitelist:
-                    if Levenshtein.distance(window, whitelist_seq) != lev_dist:
-                        continue
+        # All candidates and whitelist entries are 16 bp. Therefore an edit
+        # distance of one can only be one substitution, never an insertion or
+        # deletion. The index maps a candidate directly to its unique whitelist
+        # barcode and mismatch coordinate.
+        for i, window in enumerate(windows):
+            indexed_match = substitution_index.get(window)
+            if indexed_match is None:
+                continue
+            whitelist_seq, mismatch_position = indexed_match
+            if (ord(quality_windows[i][mismatch_position]) - 33) >= 30:
+                continue
 
-                    ops = Levenshtein.editops(window, whitelist_seq)
-                    differing_base_indices = [op[1] for op in ops if op[0] == "replace"]
-                    insertions_or_deletions = [op for op in ops if op[0] in ["insert", "delete"]]
-
-                    if len(insertions_or_deletions) == len(ops):
-                        corrected_sequence = "".join(
-                            whitelist_seq[op[1]] if op[0] == "replace" else whitelist_seq[op[2]]
-                            for op in ops
-                        )
-                        best_match = {
-                            "original_sequence": window,
-                            "corrected_sequence": corrected_sequence,
-                            "matched_spatial_barcode": whitelist_seq,
-                            "match_count": 1,
-                            "matched_qualities": quality_windows[i],
-                            "levenshtein_distance": lev_dist,
-                            "operation_type": "insertion/deletion",
-                        }
-                        break
-
-                    if differing_base_indices:
-                        if all((ord(quality_windows[i][differing_base]) - 33) < 30 for differing_base in differing_base_indices):
-                            corrected_sequence = list(window)
-                            for differing_base in differing_base_indices:
-                                corrected_sequence[differing_base] = whitelist_seq[differing_base]
-                            best_match = {
-                                "original_sequence": window,
-                                "corrected_sequence": "".join(corrected_sequence),
-                                "matched_spatial_barcode": whitelist_seq,
-                                "match_count": 1,
-                                "matched_qualities": quality_windows[i],
-                                "levenshtein_distance": lev_dist,
-                                "operation_type": "mismatch",
-                            }
-                            break
-                if best_match:
-                    break
-            if best_match:
-                break
-
-        if best_match:
-            umi = extract_umi(target_sequence, best_match["original_sequence"])
+            best_match = {
+                "original_sequence": window,
+                "corrected_sequence": whitelist_seq,
+                "matched_spatial_barcode": whitelist_seq,
+                "match_count": 1,
+                "matched_qualities": quality_windows[i],
+                "levenshtein_distance": 1,
+                "operation_type": "mismatch",
+            }
+            umi = extract_umi(target_sequence, window)
             updated_row = dict(row)
             updated_row.update(best_match)
             updated_row["UMI"] = umi
@@ -214,32 +246,14 @@ def process_sequence(row, whitelist):
     return None
 
 
-def iter_processed_rows(chunk, whitelist):
-    # Process one TSV chunk. Keeping the number of submitted futures bounded
-    # prevents memory blow-up from queuing all alignment rows at once.
+def iter_processed_rows(chunk, whitelist, substitution_index):
+    # Process one TSV chunk serially. Indexed lookups avoid both the full
+    # whitelist scan and the overhead of submitting one future per row.
     records = chunk.replace("", float("nan")).to_dict("records")
-    if max_workers == 1:
-        for row in records:
-            result = process_sequence(row, whitelist)
-            if result:
-                yield result
-        return
-
-    pending = set()
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        for row in records:
-            pending.add(executor.submit(process_sequence, row, whitelist))
-            if len(pending) >= max_workers * 4:
-                done = {future for future in pending if future.done()}
-                for future in done:
-                    result = future.result()
-                    if result:
-                        yield result
-                pending -= done
-        for future in as_completed(pending):
-            result = future.result()
-            if result:
-                yield result
+    for row in records:
+        result = process_sequence(row, whitelist, substitution_index)
+        if result:
+            yield result
 
 
 def append_group(aggregated, columns, row):
@@ -274,7 +288,17 @@ def write_aggregated_alignments(aggregated, columns, output_file):
 def process_alignment_files(meta_data_file, alignment_files):
     print("[1/8] Matching MiXCR alignments to spatial barcode whitelist and extracting UMI")
     meta_data = pd.read_csv(os.path.join(base_path, meta_data_file))
-    whitelist = set(meta_data["spatial_barcode_mixcr"])
+    if "spatial_barcode_mixcr" not in meta_data.columns:
+        raise ValueError(
+            f"missing spatial_barcode_mixcr column in {meta_data_file}"
+        )
+    whitelist, substitution_index = build_substitution_index(
+        meta_data["spatial_barcode_mixcr"].tolist()
+    )
+    print(
+        "Built spatial barcode substitution index: "
+        f"whitelist={len(whitelist)}, neighbors={len(substitution_index)}"
+    )
 
     for alignment_file in alignment_files:
         input_file = os.path.join(base_path, f"{alignment_file}-filtered_alignments_poly8A.tsv")
@@ -288,7 +312,9 @@ def process_alignment_files(meta_data_file, alignment_files):
 
         for chunk in pd.read_csv(input_file, sep="\t", dtype=str, chunksize=chunksize):
             total_rows += len(chunk)
-            updated_records = list(iter_processed_rows(chunk, whitelist))
+            updated_records = list(
+                iter_processed_rows(chunk, whitelist, substitution_index)
+            )
             matched_rows += len(updated_records)
             if not updated_records:
                 print(f"Scanned {total_rows} rows; no matches in current chunk")

@@ -1,30 +1,31 @@
-# Runtime outputs
-results/
-logs/
-tmp/
-analysis/figure1/outputs/
-analysis/figure2/outputs/
-analysis/figure3/outputs/
+# Ignore all root-level files and directories by default
+/*
 
-# Large sequencing and annotation files
-*.fastq
-*.fq
-*.fastq.gz
-*.fq.gz
-*.vdjca
-*.clna
-*_alignments.tsv
-*_updated_alignments_umi_poly8A3.csv
-*_metadata_with_levenshtein_region_*.csv
-*_cloneid_metadata_with_levenshtein_region_*.csv
-*_aaSeqCDR3_*_matrix_*.csv
+# Keep repository documentation and configuration
+!/.gitignore
+!/README.md
+!/requirements.txt
 
-# Python
-__pycache__/
+# Keep analysis scripts
+!/scripts/
+
+# Keep only the example configuration
+!/config/
+/config/*
+!/config/samples.example.tsv
+
+# Python cache
+**/__pycache__/
 *.py[cod]
-.venv/
-venv/
 
-# System/editor files
+# Temporary and log files
+*.log
+*.tmp
+*.temp
+*.swp
+*~
+
+# OS and editor files
 .DS_Store
-.ipynb_checkpoints/
+.vscode/
+.idea/

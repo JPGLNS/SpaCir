@@ -14,6 +14,17 @@ PREPROCESS_DIR="${PREPROCESS_DIR:-preprocessing}"
 MIXCR_SPECIES="${MIXCR_SPECIES:-hsa}"
 MIXCR_OUTDIR="${MIXCR_OUTDIR:-mixcr}"
 MIXCR_PRESET="${MIXCR_PRESET:-generic-amplicon}"
+MIXCR_THREADS="${MIXCR_THREADS:-20}"
+MIXCR_CPUSET="${MIXCR_CPUSET:-0-19}"
+MIXCR_HEAP_MB="${MIXCR_HEAP_MB:-50000}"
+MIXCR_INITIAL_HEAP_MB="${MIXCR_INITIAL_HEAP_MB:-8000}"
+
+mixcr_cmd=(
+    taskset -c "$MIXCR_CPUSET"
+    mixcr
+    "-Xmx${MIXCR_HEAP_MB}m"
+    "-Xms${MIXCR_INITIAL_HEAP_MB}m"
+)
 
 run_mixcr_sample() {
     local sample_id="$1"
@@ -29,8 +40,9 @@ run_mixcr_sample() {
     # - generic-amplicon is used for the concatenated amplicon-style reads.
     # - VEnd-to-C floating boundaries match the retained manuscript workflow.
     # - saveOriginalReads keeps read descriptions available in exportAlignments.
-    mixcr align \
+    "${mixcr_cmd[@]}" align \
         -p "$MIXCR_PRESET" \
+        --threads "$MIXCR_THREADS" \
         --species "$MIXCR_SPECIES" \
         --rna \
         --floating-left-alignment-boundary VEnd \
@@ -44,7 +56,7 @@ run_mixcr_sample() {
 
     # Assemble clonotypes while keeping alignments, because downstream barcode
     # matching uses per-read target sequence, quality, chain, and cloneId fields.
-    mixcr assemble \
+    "${mixcr_cmd[@]}" assemble \
         --write-alignments \
         "${prefix}.vdjca" \
         -f \
@@ -53,7 +65,7 @@ run_mixcr_sample() {
 
     # Export only columns required by the spatial barcode/UMI workflow and
     # downstream VDJC summaries.
-    mixcr exportAlignments \
+    "${mixcr_cmd[@]}" exportAlignments \
         -cloneId \
         -descrsR1 \
         -targetSequences \

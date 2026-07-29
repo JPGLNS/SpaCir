@@ -131,7 +131,10 @@ def process_sequence(row, whitelist):
         if not windows:
             return None
 
-        quality_windows = [target_qualities[i:i + 16] for i in range(len(target_sequence) - 15)]
+        quality_windows = [
+            target_qualities[6 + i:6 + i + 16]
+            for i in range(len(windows))
+        ]
 
         matched_qualities = []
         operation_types = []
